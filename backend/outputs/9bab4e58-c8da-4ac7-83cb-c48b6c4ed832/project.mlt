@@ -1,0 +1,244 @@
+<?xml version="1.0" ?>
+<mlt version="7.0.0" title="วันเกิด" producer="main_bin" LC_NUMERIC="C">
+  <profile description="HD 1080p 25fps" width="1920" height="1080" progressive="1" sample_aspect_num="1" sample_aspect_den="1" display_aspect_num="16" display_aspect_den="9" frame_rate_num="25" frame_rate_den="1" colorspace="709"/>
+  <producer id="producer_img_0" in="0" out="124">
+    <property name="resource">D:\keaapp\court_movie_maker\backend\uploads\e06c5fa7-2cae-4cf4-8738-ba444f268421\images\02e2f089547f464495ab8d8230e63bec.jpg</property>
+    <property name="mlt_service">pixbuf</property>
+    <property name="ttl">1</property>
+    <property name="length">125</property>
+    <property name="kdenlive:clipname">02e2f089547f464495ab8d8230e63bec.jpg</property>
+    <property name="kdenlive:clip_type">2</property>
+  </producer>
+  <producer id="producer_img_1" in="0" out="124">
+    <property name="resource">D:\keaapp\court_movie_maker\backend\uploads\e06c5fa7-2cae-4cf4-8738-ba444f268421\images\26fab01a27f84120a1e290f1451ee409.jpg</property>
+    <property name="mlt_service">pixbuf</property>
+    <property name="ttl">1</property>
+    <property name="length">125</property>
+    <property name="kdenlive:clipname">26fab01a27f84120a1e290f1451ee409.jpg</property>
+    <property name="kdenlive:clip_type">2</property>
+  </producer>
+  <producer id="producer_img_2" in="0" out="124">
+    <property name="resource">D:\keaapp\court_movie_maker\backend\uploads\e06c5fa7-2cae-4cf4-8738-ba444f268421\images\4104baae5d68432bb8746e25f6231c27.jpg</property>
+    <property name="mlt_service">pixbuf</property>
+    <property name="ttl">1</property>
+    <property name="length">125</property>
+    <property name="kdenlive:clipname">4104baae5d68432bb8746e25f6231c27.jpg</property>
+    <property name="kdenlive:clip_type">2</property>
+  </producer>
+  <producer id="producer_img_3" in="0" out="124">
+    <property name="resource">D:\keaapp\court_movie_maker\backend\uploads\e06c5fa7-2cae-4cf4-8738-ba444f268421\images\5302c6fb275049dea61b8a4582c352d5.jpg</property>
+    <property name="mlt_service">pixbuf</property>
+    <property name="ttl">1</property>
+    <property name="length">125</property>
+    <property name="kdenlive:clipname">5302c6fb275049dea61b8a4582c352d5.jpg</property>
+    <property name="kdenlive:clip_type">2</property>
+  </producer>
+  <producer id="producer_img_4" in="0" out="124">
+    <property name="resource">D:\keaapp\court_movie_maker\backend\uploads\e06c5fa7-2cae-4cf4-8738-ba444f268421\images\5a4e6bdca8d040ffbbc849558f3400f8.jpg</property>
+    <property name="mlt_service">pixbuf</property>
+    <property name="ttl">1</property>
+    <property name="length">125</property>
+    <property name="kdenlive:clipname">5a4e6bdca8d040ffbbc849558f3400f8.jpg</property>
+    <property name="kdenlive:clip_type">2</property>
+  </producer>
+  <producer id="producer_img_5" in="0" out="124">
+    <property name="resource">D:\keaapp\court_movie_maker\backend\uploads\e06c5fa7-2cae-4cf4-8738-ba444f268421\images\8a9f8010500a4851a2992e03d3765dc9.jpg</property>
+    <property name="mlt_service">pixbuf</property>
+    <property name="ttl">1</property>
+    <property name="length">125</property>
+    <property name="kdenlive:clipname">8a9f8010500a4851a2992e03d3765dc9.jpg</property>
+    <property name="kdenlive:clip_type">2</property>
+  </producer>
+  <producer id="producer_img_6" in="0" out="124">
+    <property name="resource">D:\keaapp\court_movie_maker\backend\uploads\e06c5fa7-2cae-4cf4-8738-ba444f268421\images\9283c2a06e82419a97abdca52e888269.jpg</property>
+    <property name="mlt_service">pixbuf</property>
+    <property name="ttl">1</property>
+    <property name="length">125</property>
+    <property name="kdenlive:clipname">9283c2a06e82419a97abdca52e888269.jpg</property>
+    <property name="kdenlive:clip_type">2</property>
+  </producer>
+  <producer id="producer_img_7" in="0" out="124">
+    <property name="resource">D:\keaapp\court_movie_maker\backend\uploads\e06c5fa7-2cae-4cf4-8738-ba444f268421\images\a58dead787264f5789dcbd739e22b9f2.jpg</property>
+    <property name="mlt_service">pixbuf</property>
+    <property name="ttl">1</property>
+    <property name="length">125</property>
+    <property name="kdenlive:clipname">a58dead787264f5789dcbd739e22b9f2.jpg</property>
+    <property name="kdenlive:clip_type">2</property>
+  </producer>
+  <producer id="producer_img_8" in="0" out="124">
+    <property name="resource">D:\keaapp\court_movie_maker\backend\uploads\e06c5fa7-2cae-4cf4-8738-ba444f268421\images\ac05000ed9ae4b379377786201b26e33.jpg</property>
+    <property name="mlt_service">pixbuf</property>
+    <property name="ttl">1</property>
+    <property name="length">125</property>
+    <property name="kdenlive:clipname">ac05000ed9ae4b379377786201b26e33.jpg</property>
+    <property name="kdenlive:clip_type">2</property>
+  </producer>
+  <producer id="producer_img_9" in="0" out="124">
+    <property name="resource">D:\keaapp\court_movie_maker\backend\uploads\e06c5fa7-2cae-4cf4-8738-ba444f268421\images\c63550a1ebe248a28889fe71bfbfee94.jpg</property>
+    <property name="mlt_service">pixbuf</property>
+    <property name="ttl">1</property>
+    <property name="length">125</property>
+    <property name="kdenlive:clipname">c63550a1ebe248a28889fe71bfbfee94.jpg</property>
+    <property name="kdenlive:clip_type">2</property>
+  </producer>
+  <producer id="producer_img_10" in="0" out="124">
+    <property name="resource">D:\keaapp\court_movie_maker\backend\uploads\e06c5fa7-2cae-4cf4-8738-ba444f268421\images\d62b60a5662c4292baa0da0720e556bf.jpg</property>
+    <property name="mlt_service">pixbuf</property>
+    <property name="ttl">1</property>
+    <property name="length">125</property>
+    <property name="kdenlive:clipname">d62b60a5662c4292baa0da0720e556bf.jpg</property>
+    <property name="kdenlive:clip_type">2</property>
+  </producer>
+  <producer id="producer_img_11" in="0" out="124">
+    <property name="resource">D:\keaapp\court_movie_maker\backend\uploads\e06c5fa7-2cae-4cf4-8738-ba444f268421\images\d7faab5946fc4ad29761d88fd20011bb.jpg</property>
+    <property name="mlt_service">pixbuf</property>
+    <property name="ttl">1</property>
+    <property name="length">125</property>
+    <property name="kdenlive:clipname">d7faab5946fc4ad29761d88fd20011bb.jpg</property>
+    <property name="kdenlive:clip_type">2</property>
+  </producer>
+  <producer id="producer_img_12" in="0" out="124">
+    <property name="resource">D:\keaapp\court_movie_maker\backend\uploads\e06c5fa7-2cae-4cf4-8738-ba444f268421\images\e730040c711d4017965a952619f82f46.jpg</property>
+    <property name="mlt_service">pixbuf</property>
+    <property name="ttl">1</property>
+    <property name="length">125</property>
+    <property name="kdenlive:clipname">e730040c711d4017965a952619f82f46.jpg</property>
+    <property name="kdenlive:clip_type">2</property>
+  </producer>
+  <producer id="producer_audio_bg" in="0" out="1299">
+    <property name="resource">D:\keaapp\court_movie_maker\backend\uploads\e06c5fa7-2cae-4cf4-8738-ba444f268421\audio\background.mp3</property>
+    <property name="mlt_service">avformat</property>
+    <property name="audio_index">0</property>
+    <property name="video_index">-1</property>
+    <property name="kdenlive:clipname">background.mp3</property>
+    <property name="kdenlive:clip_type">3</property>
+  </producer>
+  <playlist id="main_bin">
+    <property name="kdenlive:docproperties.activeTrack">2</property>
+    <property name="kdenlive:docproperties.version">1.00</property>
+    <property name="kdenlive:docproperties.projectfolder">D:\keaapp\court_movie_maker\backend\outputs\9bab4e58-c8da-4ac7-83cb-c48b6c4ed832</property>
+    <entry producer="producer_img_0" in="0" out="0"/>
+    <entry producer="producer_img_1" in="0" out="0"/>
+    <entry producer="producer_img_2" in="0" out="0"/>
+    <entry producer="producer_img_3" in="0" out="0"/>
+    <entry producer="producer_img_4" in="0" out="0"/>
+    <entry producer="producer_img_5" in="0" out="0"/>
+    <entry producer="producer_img_6" in="0" out="0"/>
+    <entry producer="producer_img_7" in="0" out="0"/>
+    <entry producer="producer_img_8" in="0" out="0"/>
+    <entry producer="producer_img_9" in="0" out="0"/>
+    <entry producer="producer_img_10" in="0" out="0"/>
+    <entry producer="producer_img_11" in="0" out="0"/>
+    <entry producer="producer_img_12" in="0" out="0"/>
+    <entry producer="producer_audio_bg" in="0" out="0"/>
+  </playlist>
+  <playlist id="playlist_v1">
+    <property name="kdenlive:track_name">Video Track 1</property>
+    <entry producer="producer_img_0" in="0" out="124"/>
+    <entry producer="producer_img_1" in="0" out="124"/>
+    <entry producer="producer_img_2" in="0" out="124"/>
+    <entry producer="producer_img_3" in="0" out="124"/>
+    <entry producer="producer_img_4" in="0" out="124"/>
+    <entry producer="producer_img_5" in="0" out="124"/>
+    <entry producer="producer_img_6" in="0" out="124"/>
+    <entry producer="producer_img_7" in="0" out="124"/>
+    <entry producer="producer_img_8" in="0" out="124"/>
+    <entry producer="producer_img_9" in="0" out="124"/>
+    <entry producer="producer_img_10" in="0" out="124"/>
+    <entry producer="producer_img_11" in="0" out="124"/>
+    <entry producer="producer_img_12" in="0" out="124"/>
+  </playlist>
+  <playlist id="playlist_a1">
+    <property name="kdenlive:track_name">Audio Track 1</property>
+    <entry producer="producer_audio_bg" in="0" out="1299"/>
+  </playlist>
+  <tractor id="tractor_main" in="0" out="1299" title="วันเกิด">
+    <property name="kdenlive:docproperties.projectName">วันเกิด</property>
+    <track producer="playlist_a1" hide="video"/>
+    <track producer="playlist_v1" hide="audio"/>
+    <transition id="transition_0" in="100" out="124">
+      <property name="a_track">0</property>
+      <property name="b_track">1</property>
+      <property name="mlt_service">slide</property>
+      <property name="automatic">1</property>
+      <property name="direction">left</property>
+    </transition>
+    <transition id="transition_1" in="200" out="224">
+      <property name="a_track">0</property>
+      <property name="b_track">1</property>
+      <property name="mlt_service">slide</property>
+      <property name="automatic">1</property>
+      <property name="direction">left</property>
+    </transition>
+    <transition id="transition_2" in="300" out="324">
+      <property name="a_track">0</property>
+      <property name="b_track">1</property>
+      <property name="mlt_service">slide</property>
+      <property name="automatic">1</property>
+      <property name="direction">left</property>
+    </transition>
+    <transition id="transition_3" in="400" out="424">
+      <property name="a_track">0</property>
+      <property name="b_track">1</property>
+      <property name="mlt_service">slide</property>
+      <property name="automatic">1</property>
+      <property name="direction">left</property>
+    </transition>
+    <transition id="transition_4" in="500" out="524">
+      <property name="a_track">0</property>
+      <property name="b_track">1</property>
+      <property name="mlt_service">slide</property>
+      <property name="automatic">1</property>
+      <property name="direction">left</property>
+    </transition>
+    <transition id="transition_5" in="600" out="624">
+      <property name="a_track">0</property>
+      <property name="b_track">1</property>
+      <property name="mlt_service">slide</property>
+      <property name="automatic">1</property>
+      <property name="direction">left</property>
+    </transition>
+    <transition id="transition_6" in="700" out="724">
+      <property name="a_track">0</property>
+      <property name="b_track">1</property>
+      <property name="mlt_service">slide</property>
+      <property name="automatic">1</property>
+      <property name="direction">left</property>
+    </transition>
+    <transition id="transition_7" in="800" out="824">
+      <property name="a_track">0</property>
+      <property name="b_track">1</property>
+      <property name="mlt_service">slide</property>
+      <property name="automatic">1</property>
+      <property name="direction">left</property>
+    </transition>
+    <transition id="transition_8" in="900" out="924">
+      <property name="a_track">0</property>
+      <property name="b_track">1</property>
+      <property name="mlt_service">slide</property>
+      <property name="automatic">1</property>
+      <property name="direction">left</property>
+    </transition>
+    <transition id="transition_9" in="1000" out="1024">
+      <property name="a_track">0</property>
+      <property name="b_track">1</property>
+      <property name="mlt_service">slide</property>
+      <property name="automatic">1</property>
+      <property name="direction">left</property>
+    </transition>
+    <transition id="transition_10" in="1100" out="1124">
+      <property name="a_track">0</property>
+      <property name="b_track">1</property>
+      <property name="mlt_service">slide</property>
+      <property name="automatic">1</property>
+      <property name="direction">left</property>
+    </transition>
+    <transition id="transition_11" in="1200" out="1224">
+      <property name="a_track">0</property>
+      <property name="b_track">1</property>
+      <property name="mlt_service">slide</property>
+      <property name="automatic">1</property>
+      <property name="direction">left</property>
+    </transition>
+  </tractor>
+</mlt>
