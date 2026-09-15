@@ -1,0 +1,16 @@
+Command: C:\Program Files\Blender Foundation\Blender 5.2\blender.exe --background --python d:\keaapp\court_movie_maker\backend\temp\blender_3d_verify_test.py
+
+d:\keaapp\court_movie_maker\backend\temp\blender_3d_verify_test.py:39: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+d:\keaapp\court_movie_maker\backend\temp\blender_3d_verify_test.py:88: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  frame_mat.use_nodes = True
+d:\keaapp\court_movie_maker\backend\temp\blender_3d_verify_test.py:118: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Traceback (most recent call last):
+  File "d:\keaapp\court_movie_maker\backend\temp\blender_3d_verify_test.py", line 194, in <module>
+    seq = scene.sequence_editor.sequences
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'SequenceEditor' object has no attribute 'sequences'
+Blender 5.2.1 LTS (hash 9e2066aef7ef built 2026-08-25 02:38:20)
+
+Blender quit
