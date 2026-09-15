@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -6,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/app_providers.dart';
 import '../models/project_model.dart';
 import '../widgets/progress_dialog.dart';
+import '../widgets/transition_preview_widget.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 
@@ -50,9 +52,9 @@ class _TimelinePreviewScreenState extends ConsumerState<TimelinePreviewScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('ตรวจสอบและ Render'),
-        leading: BackButton(onPressed: () => context.go('/import')),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(4),
+        leading: const BackButton(),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(4),
           child: LinearProgressIndicator(value: 0.75, backgroundColor: Colors.white24, color: AppTheme.primaryGold),
         ),
       ),
@@ -133,14 +135,53 @@ class _TimelinePreviewScreenState extends ConsumerState<TimelinePreviewScreen> {
                               });
                             },
                             itemBuilder: (ctx, i) {
+                              final defaultTrans = project.customTransition ?? selected?.transition ?? 'crossfade';
+                              final clipTrans = i < project.clipTransitions.length
+                                  ? project.clipTransitions[i]
+                                  : defaultTrans;
                               return _TimelineItem(
                                 key: ValueKey(_orderedImages[i]),
                                 path: _orderedImages[i],
                                 index: i,
+                                totalCount: _orderedImages.length,
                                 duration: selected?.durationPerImage ?? 3,
+                                transitionName: clipTrans,
+                                onTapTransition: i < _orderedImages.length - 1
+                                    ? () {
+                                        showClipTransitionDialog(
+                                          context: context,
+                                          slotIndex: i,
+                                          imagePathA: _orderedImages[i],
+                                          imagePathB: _orderedImages[i + 1],
+                                          currentTransition: clipTrans,
+                                          durationSeconds: project.transitionDuration,
+                                          onSelected: (t) => ref.read(projectProvider.notifier).setClipTransition(i, t),
+                                          onApplyToAll: (t) => ref.read(projectProvider.notifier).setAllClipTransitions(t),
+                                        );
+                                      }
+                                    : null,
                               );
                             },
                           ),
+                  ),
+
+                  // Transition Selector & Live Preview Card
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: TransitionSelectorCard(
+                      currentTransition: project.customTransition ?? selected?.transition ?? 'crossfade',
+                      durationSeconds: project.transitionDuration,
+                      imagePaths: _orderedImages,
+                      clipTransitions: project.clipTransitions,
+                      onTransitionChanged: (t) => ref.read(projectProvider.notifier).setTransition(t),
+                      onDurationChanged: (d) => ref.read(projectProvider.notifier).setTransition(
+                        project.customTransition ?? selected?.transition ?? 'crossfade',
+                        duration: d,
+                      ),
+                      onClipTransitionChanged: (idx, t) => ref.read(projectProvider.notifier).setClipTransition(idx, t),
+                      onRandomizeAll: () => ref.read(projectProvider.notifier).randomizeClipTransitions(),
+                      onApplyToAll: (t) => ref.read(projectProvider.notifier).setAllClipTransitions(t),
+                    ),
                   ),
 
                   // Script preview
@@ -303,6 +344,9 @@ class _TimelinePreviewScreenState extends ConsumerState<TimelinePreviewScreen> {
     final ws = ref.read(webSocketServiceProvider);
 
     try {
+      final defaultTrans = projectState.customTransition ?? ref.read(selectedTemplateProvider)?.transition ?? 'crossfade';
+      final effectiveTransitions = ref.read(projectProvider.notifier).getEffectiveClipTransitions(defaultTrans);
+
       final jobId = await api.startRender(
         projectState.projectId!,
         useTts: projectState.scriptText != null && projectState.scriptText!.isNotEmpty,
@@ -310,6 +354,9 @@ class _TimelinePreviewScreenState extends ConsumerState<TimelinePreviewScreen> {
         useBlender: projectState.useBlender,
         blenderPath: projectState.blenderPath,
         imageOrder: _orderedImages,
+        transition: defaultTrans,
+        transitions: effectiveTransitions,
+        transitionDuration: projectState.transitionDuration,
       );
 
       renderNotifier.startRender(jobId);
@@ -373,15 +420,56 @@ class _TimelinePreviewScreenState extends ConsumerState<TimelinePreviewScreen> {
 class _TimelineItem extends StatelessWidget {
   final String path;
   final int index;
+  final int totalCount;
   final int duration;
+  final String transitionName;
+  final VoidCallback? onTapTransition;
 
-  const _TimelineItem({super.key, required this.path, required this.index, required this.duration});
+  const _TimelineItem({
+    super.key,
+    required this.path,
+    required this.index,
+    required this.totalCount,
+    required this.duration,
+    required this.transitionName,
+    this.onTapTransition,
+  });
+
+  Widget _buildImage() {
+    if (path.startsWith('http')) {
+      return Image.network(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _placeholder(),
+      );
+    }
+    try {
+      final file = File(path);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _placeholder(),
+        );
+      }
+    } catch (_) {}
+    return _placeholder();
+  }
+
+  Widget _placeholder() {
+    return Container(
+      color: AppTheme.primaryNavy.withOpacity(0.15),
+      child: const Center(
+        child: Icon(Icons.image, size: 36, color: AppTheme.primaryNavy),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 120,
-      margin: const EdgeInsets.only(right: 8),
+      width: 124,
+      margin: const EdgeInsets.only(right: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.primaryNavy.withOpacity(0.3)),
@@ -391,14 +479,7 @@ class _TimelineItem extends StatelessWidget {
         child: Stack(
           children: [
             Positioned.fill(
-              child: Image.network(
-                path.startsWith('http') ? path : Uri.file(path).toString(),
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: AppTheme.primaryNavy.withOpacity(0.15),
-                  child: const Icon(Icons.image, size: 40, color: AppTheme.primaryNavy),
-                ),
-              ),
+              child: _buildImage(),
             ),
             Positioned(
               top: 6,
@@ -421,9 +502,48 @@ class _TimelineItem extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 color: Colors.black54,
-                child: Text('${duration}วิ', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 11)),
+                child: Text('$durationวิ', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 11)),
               ),
             ),
+            // Transition Badge to next clip (Interactive)
+            if (index < totalCount - 1)
+              Positioned(
+                bottom: 26,
+                right: 4,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onTapTransition,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Tooltip(
+                      message: 'เปลี่ยน Transition ช่วงนี้',
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2.5),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryGold,
+                          borderRadius: BorderRadius.circular(6),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 1)),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.swap_horiz, size: 11, color: Colors.black),
+                            const SizedBox(width: 2),
+                            Text(
+                              transitionName,
+                              style: const TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(width: 2),
+                            const Icon(Icons.edit, size: 8, color: Colors.black54),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             // Drag handle
             const Positioned(
               top: 6,

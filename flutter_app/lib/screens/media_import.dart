@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/app_providers.dart';
+import '../models/audio_track_model.dart';
+import '../widgets/audio_track_editor_card.dart';
 import '../widgets/media_thumbnail.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
@@ -134,7 +135,9 @@ class _MediaImportScreenState extends ConsumerState<MediaImportScreen> {
       final images = projectState.imagePaths.map((p) => File(p)).toList();
       await api.uploadImages(projectId, images);
 
-      if (projectState.audioPath != null) {
+      if (projectState.audioTracks.isNotEmpty) {
+        await api.uploadAudioTracks(projectId, projectState.audioTracks);
+      } else if (projectState.audioPath != null) {
         await api.uploadAudio(projectId, File(projectState.audioPath!));
       }
 
@@ -260,38 +263,145 @@ class _AudioStep extends ConsumerWidget {
   final VoidCallback onBack;
   const _AudioStep({required this.onNext, required this.onBack});
 
+  String _formatTime(double seconds) {
+    if (seconds < 0) seconds = 0;
+    final int m = seconds ~/ 60;
+    final int s = (seconds % 60).toInt();
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final project = ref.watch(projectProvider);
     final notifier = ref.read(projectProvider.notifier);
+    final template = ref.watch(selectedTemplateProvider);
+
+    final tracks = project.audioTracks;
+    final totalMusicDuration = tracks.fold<double>(0.0, (sum, t) => sum + t.trimmedDuration);
+    final int imageCount = project.imagePaths.length;
+    final int durationPerImage = template?.durationPerImage ?? 5;
+    final double estimatedVideoDuration = (imageCount * durationPerImage).toDouble();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        OutlinedButton.icon(
-          icon: const Icon(Icons.music_note),
-          label: const Text('เลือกไฟล์เสียงเพลง (MP3, WAV, M4A)'),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            side: const BorderSide(color: AppTheme.primaryNavy, width: 1.5),
-          ),
-          onPressed: () async {
-            final result = await FilePicker.platform.pickFiles(
-              type: FileType.audio,
-              allowMultiple: false,
-            );
-            if (result != null && result.paths.isNotEmpty) {
-              notifier.setAudioPath(result.paths.first);
-            }
-          },
+
+        // Action Buttons Row
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.add_circle_outline, color: AppTheme.primaryNavy),
+                label: const Text(
+                  '+ เพิ่มเพลง (เลือกได้หลายไฟล์)',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: AppTheme.primaryNavy, width: 1.5),
+                ),
+                onPressed: () async {
+                  final result = await FilePicker.platform.pickFiles(
+                    type: FileType.audio,
+                    allowMultiple: true,
+                  );
+                  if (result != null && result.paths.isNotEmpty) {
+                    for (int i = 0; i < result.paths.length; i++) {
+                      final path = result.paths[i];
+                      if (path == null) continue;
+                      final name = path.replaceAll('\\', '/').split('/').last;
+                      final track = AudioTrackConfig(
+                        id: 'track_${DateTime.now().millisecondsSinceEpoch}_$i',
+                        path: path,
+                        name: name,
+                        duration: 0.0,
+                        startTrim: 0.0,
+                        endTrim: 0.0,
+                        volume: 1.0,
+                        fadeIn: 1.0,
+                        fadeOut: 1.5,
+                      );
+                      notifier.addAudioTrack(track);
+                    }
+                  }
+                },
+              ),
+            ),
+            if (tracks.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent, size: 20),
+                label: const Text('ล้างทั้งหมด', style: TextStyle(color: Colors.redAccent)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                  side: const BorderSide(color: Colors.redAccent),
+                ),
+                onPressed: () => notifier.setAudioTracks([]),
+              ),
+            ],
+          ],
         ),
-        const SizedBox(height: 16),
-        if (project.audioPath != null) ...[
-          _AudioPreviewCard(path: project.audioPath!, onRemove: () => notifier.setAudioPath(null)),
-        ] else
+
+        const SizedBox(height: 12),
+
+        // Info Banner: Duration comparison & crossfade explanation
+        if (tracks.isNotEmpty) ...[
           Container(
-            height: 120,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryNavy.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.primaryNavy.withOpacity(0.15)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.queue_music, size: 18, color: AppTheme.primaryNavy),
+                        const SizedBox(width: 6),
+                        Text(
+                          'เลือกไว้ ${tracks.length} เพลง (ความยาวรวม: ${_formatTime(totalMusicDuration)})',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryNavy),
+                        ),
+                      ],
+                    ),
+                    if (imageCount > 0)
+                      Text(
+                        'วิดีโอประมาณ: ${_formatTime(estimatedVideoDuration)}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[700], fontWeight: FontWeight.w500),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(Icons.auto_awesome, size: 14, color: Colors.amber),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        tracks.length > 1
+                            ? 'ระบบจะทำ Crossfade (Fade In & Fade Out) เชื่อมต่อเพลงให้อย่างนุ่มนวลอัตโนมัติ'
+                            : 'สามารถตัดช่วงเพลง ปรับระดับเสียง และตั้งค่า Fade In / Fade Out ได้ตามต้องการ',
+                        style: TextStyle(fontSize: 11.5, color: Colors.grey[800]),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Tracks List or Empty placeholder
+        if (tracks.isEmpty)
+          Container(
+            height: 140,
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.withOpacity(0.3)),
               borderRadius: BorderRadius.circular(12),
@@ -300,14 +410,39 @@ class _AudioStep extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.music_off, size: 40, color: Colors.grey),
-                  SizedBox(height: 6),
-                  Text('ไม่บังคับ - สามารถข้ามได้', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  Icon(Icons.music_note_outlined, size: 44, color: Colors.grey),
+                  SizedBox(height: 8),
+                  Text('ยังไม่ได้เลือกเพลงประกอบ', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey)),
+                  SizedBox(height: 4),
+                  Text('กดปุ่มด้านบนเพื่อเลือกเพลง (เลือกได้หลายเพลง หรือข้ามขั้นตอนนี้ได้)',
+                      style: TextStyle(color: Colors.grey, fontSize: 12)),
                 ],
               ),
             ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: tracks.length,
+            itemBuilder: (context, index) {
+              final track = tracks[index];
+              return AudioTrackEditorCard(
+                key: ValueKey(track.id),
+                track: track,
+                index: index,
+                totalCount: tracks.length,
+                onChanged: (updated) => notifier.updateAudioTrack(index, updated),
+                onRemove: () => notifier.removeAudioTrack(index),
+                onMoveUp: index > 0 ? () => notifier.reorderAudioTracks(index, index - 1) : null,
+                onMoveDown: index < tracks.length - 1 ? () => notifier.reorderAudioTracks(index, index + 1) : null,
+              );
+            },
           ),
+
         const SizedBox(height: 20),
+
+        // Navigation Row
         Row(
           children: [
             OutlinedButton.icon(
@@ -329,87 +464,6 @@ class _AudioStep extends ConsumerWidget {
       ],
     );
   }
-}
-
-class _AudioPreviewCard extends StatelessWidget {
-  final String path;
-  final VoidCallback onRemove;
-  const _AudioPreviewCard({required this.path, required this.onRemove});
-
-  String get _filename => path.replaceAll('\\', '/').split('/').last;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.music_note, color: Colors.purple, size: 28),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_filename, style: const TextStyle(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      const Text('ไฟล์เสียงเพลง', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.red),
-                  onPressed: onRemove,
-                  tooltip: 'ลบ',
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Waveform placeholder
-            Container(
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.purple.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: CustomPaint(painter: _WaveformPainter()),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.95, 0.95), end: const Offset(1, 1));
-  }
-}
-
-class _WaveformPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.purple.withOpacity(0.5)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    const bars = 50;
-    final barWidth = size.width / bars;
-    final heights = [0.3, 0.6, 0.8, 0.4, 0.9, 0.5, 0.7, 0.3, 0.85, 0.6, 0.4, 0.75, 0.5, 0.9, 0.3, 0.65, 0.8, 0.4, 0.7, 0.55];
-    for (int i = 0; i < bars; i++) {
-      final h = size.height * heights[i % heights.length];
-      final x = i * barWidth + barWidth / 2;
-      canvas.drawLine(Offset(x, (size.height - h) / 2), Offset(x, (size.height + h) / 2), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_) => false;
 }
 
 // ─── Step 3: Script ──────────────────────────────────────────────────────────

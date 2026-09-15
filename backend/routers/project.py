@@ -63,6 +63,21 @@ class ScriptRequest(BaseModel):
     rate: str = Field("+0%", description="ความเร็วพูด: เช่น +0%, +10%, -10%")
 
 
+class AudioTrackItem(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    filename: str
+    name: str = ""
+    start_trim: float = 0.0
+    end_trim: float | None = None
+    volume: float = 1.0
+    fade_in: float = 1.0
+    fade_out: float = 1.5
+
+
+class AudioConfigRequest(BaseModel):
+    tracks: list[AudioTrackItem]
+
+
 # ────────────────────────────────────────────────────────────────
 # Helper functions
 # ────────────────────────────────────────────────────────────────
@@ -220,11 +235,11 @@ async def upload_audio(
     project_id: str,
     file: Annotated[UploadFile | None, File(description="ไฟล์เสียง (MP3, WAV, OGG)")] = None,
     audio: Annotated[UploadFile | None, File(description="ไฟล์เสียง (MP3, WAV, OGG)")] = None,
+    replace_all: bool = False,
 ) -> dict[str, Any]:
     """
     อัพโหลดไฟล์เสียงพื้นหลังสำหรับโปรเจกต์
-
-    รองรับ: MP3, WAV, OGG, FLAC, AAC (รับทั้งฟิลด์ 'file' และ 'audio')
+    รองรับ: MP3, WAV, OGG, FLAC, AAC, M4A
     """
     meta = _get_project_meta(project_id)
     project_dir = _get_project_dir(project_id)
@@ -235,7 +250,6 @@ async def upload_audio(
     if upload_file is None:
         raise HTTPException(status_code=400, detail="กรุณาเลือกไฟล์เสียงสำหรับอัพโหลด")
 
-    # ตรวจสอบประเภทไฟล์
     content_type = upload_file.content_type or ""
     ext = Path(upload_file.filename or "audio.mp3").suffix.lower()
     allowed_exts = {".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a"}
@@ -246,20 +260,24 @@ async def upload_audio(
             detail=f"ไม่รองรับไฟล์เสียงประเภท: {content_type or ext}"
         )
 
-    data = await file.read()
+    data = await upload_file.read()
     if len(data) > MAX_AUDIO_SIZE:
         raise HTTPException(
             status_code=413,
             detail=f"ไฟล์เสียงใหญ่เกิน {MAX_AUDIO_SIZE // 1024 // 1024} MB"
         )
 
-    # ลบไฟล์เสียงเก่า (ถ้ามี)
-    for old_file in audio_dir.iterdir():
-        old_file.unlink(missing_ok=True)
+    if replace_all:
+        for old_file in audio_dir.iterdir():
+            old_file.unlink(missing_ok=True)
 
     if ext not in allowed_exts:
         ext = ".mp3"
-    audio_filename = f"background{ext}"
+
+    # บันทึกไฟล์โดยใช้ชื่อ safe_name
+    orig_base = Path(upload_file.filename or "audio").stem
+    clean_base = "".join(c for c in orig_base if c.isalnum() or c in ("-", "_")).strip() or "audio"
+    audio_filename = f"{clean_base}_{uuid.uuid4().hex[:6]}{ext}"
     dest = audio_dir / audio_filename
 
     async with aiofiles.open(dest, "wb") as f:
@@ -268,12 +286,98 @@ async def upload_audio(
     meta["audio"] = audio_filename
     _save_project_meta(project_id, meta)
 
-    logger.info("บันทึกไฟล์เสียง: %s → %s", file.filename, audio_filename)
+    logger.info("บันทึกไฟล์เสียง: %s → %s", upload_file.filename, audio_filename)
     return {
         "project_id": project_id,
         "audio_file": audio_filename,
+        "filename": audio_filename,
+        "original_name": upload_file.filename,
         "size_kb": round(len(data) / 1024, 1),
         "message": "อัพโหลดไฟล์เสียงสำเร็จ",
+    }
+
+
+@router.post(
+    "/{project_id}/upload-audios",
+    summary="อัพโหลดไฟล์เสียงหลายไฟล์พร้อมกัน",
+)
+async def upload_audios(
+    project_id: str,
+    files: Annotated[list[UploadFile], File(description="รายการไฟล์เสียงหลายไฟล์")],
+) -> dict[str, Any]:
+    """
+    อัพโหลดไฟล์เสียงหลายไฟล์สำหรับใช้ผสมเพลงหลายแทร็ก
+    """
+    meta = _get_project_meta(project_id)
+    project_dir = _get_project_dir(project_id)
+    audio_dir = project_dir / "audio"
+    audio_dir.mkdir(parents=True, exist_ok=True)
+
+    saved: list[dict[str, Any]] = []
+    errors: list[dict[str, str]] = []
+    allowed_exts = {".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a"}
+
+    for upload in files:
+        ext = Path(upload.filename or "audio.mp3").suffix.lower()
+        if ext not in allowed_exts:
+            errors.append({"file": upload.filename or "unknown", "error": "นามสกุลไฟล์ไม่ถูกต้อง"})
+            continue
+
+        data = await upload.read()
+        if len(data) > MAX_AUDIO_SIZE:
+            errors.append({"file": upload.filename or "unknown", "error": "ขนาดไฟล์เกินขีดจำกัด"})
+            continue
+
+        orig_base = Path(upload.filename or "audio").stem
+        clean_base = "".join(c for c in orig_base if c.isalnum() or c in ("-", "_")).strip() or "audio"
+        audio_filename = f"{clean_base}_{uuid.uuid4().hex[:6]}{ext}"
+        dest = audio_dir / audio_filename
+
+        async with aiofiles.open(dest, "wb") as f:
+            await f.write(data)
+
+        saved.append({
+            "original_name": upload.filename,
+            "filename": audio_filename,
+            "path": str(dest.resolve()),
+            "size_kb": round(len(data) / 1024, 1),
+        })
+
+    if saved and not meta.get("audio"):
+        meta["audio"] = saved[0]["filename"]
+    _save_project_meta(project_id, meta)
+
+    return {
+        "project_id": project_id,
+        "saved": saved,
+        "errors": errors,
+        "total": len(saved),
+        "message": f"อัพโหลดสำเร็จ {len(saved)} ไฟล์",
+    }
+
+
+@router.post(
+    "/{project_id}/audio-config",
+    summary="บันทึกการตั้งค่าตัดต่อเพลง (Trim, Volume, Fade In/Out, Crossfade)",
+)
+async def save_audio_config(
+    project_id: str,
+    body: AudioConfigRequest,
+) -> dict[str, Any]:
+    """
+    บันทึกการตั้งค่าตัดต่อเพลงแต่ละแทร็ก
+    """
+    meta = _get_project_meta(project_id)
+    meta["audio_tracks"] = [t.model_dump() for t in body.tracks]
+    if body.tracks:
+        meta["audio"] = body.tracks[0].filename
+    _save_project_meta(project_id, meta)
+
+    logger.info("บันทึก Audio Config สำหรับโปรเจกต์ %s: %d แทร็ก", project_id, len(body.tracks))
+    return {
+        "project_id": project_id,
+        "tracks_count": len(body.tracks),
+        "message": "บันทึกการตั้งค่าตัดต่อเสียงสำเร็จ",
     }
 
 

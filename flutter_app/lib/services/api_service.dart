@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/template_model.dart';
 import '../models/project_model.dart';
+import '../models/audio_track_model.dart';
 
 class ApiException implements Exception {
   final String message;
@@ -164,6 +165,50 @@ class ApiService {
     }
   }
 
+  Future<void> uploadAudioTracks(String projectId, List<AudioTrackConfig> tracks) async {
+    final savedTracks = <AudioTrackConfig>[];
+    for (final track in tracks) {
+      final file = File(track.path);
+      if (!await file.exists()) continue;
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/project/$projectId/upload-audio'),
+      );
+      request.files.add(await http.MultipartFile.fromPath('file', file.path));
+      request.files.add(await http.MultipartFile.fromPath('audio', file.path));
+
+      try {
+        final streamed = await request.send().timeout(const Duration(minutes: 5));
+        final response = await http.Response.fromStream(streamed);
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          final body = json.decode(utf8.decode(response.bodyBytes));
+          final serverFilename = body['filename'] as String? ?? body['audio_file'] as String?;
+          savedTracks.add(track.copyWith(serverFilename: serverFilename));
+        } else {
+          throw ApiException('ไม่สามารถอัปโหลดไฟล์เสียง ${track.name} ได้');
+        }
+      } catch (e) {
+        if (e is ApiException) rethrow;
+        throw ApiException('อัปโหลดไฟล์เสียง ${track.name} ล้มเหลว: $e');
+      }
+    }
+
+    // บันทึก Audio Configuration (Trim, Volume, Fade In/Out, Crossfade)
+    if (savedTracks.isNotEmpty) {
+      await _handleResponse(
+        () => http.post(
+          Uri.parse('$baseUrl/project/$projectId/audio-config'),
+          headers: _headers,
+          body: json.encode({
+            'tracks': savedTracks.map((t) => t.toJson()).toList(),
+          }),
+        ),
+        (body) => body,
+      );
+    }
+  }
+
   Future<void> uploadScript(
     String projectId,
     String text,
@@ -193,6 +238,9 @@ class ApiService {
     bool useBlender = false,
     String blenderPath = 'blender',
     List<String> imageOrder = const [],
+    String? transition,
+    List<String>? transitions,
+    double? transitionDuration,
   }) async {
     return _handleResponse(
       () => http.post(
@@ -204,6 +252,9 @@ class ApiService {
           'use_blender': useBlender,
           'blender_path': blenderPath,
           'image_order': imageOrder,
+          if (transition != null) 'transition': transition,
+          if (transitions != null && transitions.isNotEmpty) 'transitions': transitions,
+          if (transitionDuration != null) 'transition_duration': transitionDuration,
         }),
       ),
       (body) => body['job_id'] as String,

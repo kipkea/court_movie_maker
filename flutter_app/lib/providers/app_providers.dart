@@ -1,9 +1,11 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/template_model.dart';
 import '../models/project_model.dart';
 import '../models/media_clip.dart';
+import '../models/audio_track_model.dart';
 import '../services/api_service.dart';
 import '../services/websocket_service.dart';
 
@@ -47,6 +49,7 @@ class ProjectState {
   final ProjectModel? project;
   final List<String> imagePaths;
   final String? audioPath;
+  final List<AudioTrackConfig> audioTracks;
   final String? scriptText;
   final bool useScriptAudio;
   final String? scriptAudioPath;
@@ -59,11 +62,16 @@ class ProjectState {
   // Blender 3D options
   final bool useBlender;
   final String blenderPath;
+  // Transition options
+  final String? customTransition;
+  final double transitionDuration;
+  final List<String> clipTransitions;
 
   const ProjectState({
     this.project,
     this.imagePaths = const [],
     this.audioPath,
+    this.audioTracks = const [],
     this.scriptText,
     this.useScriptAudio = false,
     this.scriptAudioPath,
@@ -74,12 +82,16 @@ class ProjectState {
     this.ttsRate = '+0%',
     this.useBlender = false,
     this.blenderPath = 'blender',
+    this.customTransition,
+    this.transitionDuration = 1.5,
+    this.clipTransitions = const [],
   });
 
   ProjectState copyWith({
     ProjectModel? project,
     List<String>? imagePaths,
     String? audioPath,
+    List<AudioTrackConfig>? audioTracks,
     String? scriptText,
     bool? useScriptAudio,
     String? scriptAudioPath,
@@ -90,6 +102,10 @@ class ProjectState {
     String? ttsRate,
     bool? useBlender,
     String? blenderPath,
+    String? customTransition,
+    double? transitionDuration,
+    List<String>? clipTransitions,
+    bool clearTransition = false,
     bool clearError = false,
     bool clearAudio = false,
     bool clearScriptAudio = false,
@@ -98,6 +114,7 @@ class ProjectState {
       project: project ?? this.project,
       imagePaths: imagePaths ?? this.imagePaths,
       audioPath: clearAudio ? null : (audioPath ?? this.audioPath),
+      audioTracks: audioTracks ?? this.audioTracks,
       scriptText: scriptText ?? this.scriptText,
       useScriptAudio: useScriptAudio ?? this.useScriptAudio,
       scriptAudioPath: clearScriptAudio ? null : (scriptAudioPath ?? this.scriptAudioPath),
@@ -108,6 +125,9 @@ class ProjectState {
       ttsRate: ttsRate ?? this.ttsRate,
       useBlender: useBlender ?? this.useBlender,
       blenderPath: blenderPath ?? this.blenderPath,
+      customTransition: clearTransition ? null : (customTransition ?? this.customTransition),
+      transitionDuration: transitionDuration ?? this.transitionDuration,
+      clipTransitions: clipTransitions ?? this.clipTransitions,
     );
   }
 
@@ -146,6 +166,51 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
     }
   }
 
+  void setAudioTracks(List<AudioTrackConfig> tracks) {
+    state = state.copyWith(
+      audioTracks: tracks,
+      audioPath: tracks.isNotEmpty ? tracks.first.path : null,
+      clearAudio: tracks.isEmpty,
+    );
+  }
+
+  void addAudioTrack(AudioTrackConfig track) {
+    final list = List<AudioTrackConfig>.from(state.audioTracks);
+    list.add(track);
+    state = state.copyWith(
+      audioTracks: list,
+      audioPath: list.first.path,
+    );
+  }
+
+  void updateAudioTrack(int index, AudioTrackConfig track) {
+    if (index < 0 || index >= state.audioTracks.length) return;
+    final list = List<AudioTrackConfig>.from(state.audioTracks);
+    list[index] = track;
+    state = state.copyWith(audioTracks: list);
+  }
+
+  void removeAudioTrack(int index) {
+    if (index < 0 || index >= state.audioTracks.length) return;
+    final list = List<AudioTrackConfig>.from(state.audioTracks);
+    list.removeAt(index);
+    state = state.copyWith(
+      audioTracks: list,
+      audioPath: list.isNotEmpty ? list.first.path : null,
+      clearAudio: list.isEmpty,
+    );
+  }
+
+  void reorderAudioTracks(int oldIndex, int newIndex) {
+    final list = List<AudioTrackConfig>.from(state.audioTracks);
+    final item = list.removeAt(oldIndex);
+    list.insert(newIndex, item);
+    state = state.copyWith(
+      audioTracks: list,
+      audioPath: list.isNotEmpty ? list.first.path : null,
+    );
+  }
+
   void setScriptText(String text) {
     state = state.copyWith(scriptText: text);
   }
@@ -181,6 +246,73 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
   // Blender setters
   void setUseBlender(bool val) => state = state.copyWith(useBlender: val);
   void setBlenderPath(String path) => state = state.copyWith(blenderPath: path);
+
+  static const List<String> availableTransitionIds = [
+    'crossfade',
+    'push_slide',
+    'slide',
+    'wipe_diagonal',
+    'wipe',
+    'zoom_in',
+    'glitter',
+  ];
+
+  // Transition setters
+  void setTransition(String? transition, {double? duration}) {
+    state = state.copyWith(
+      customTransition: transition,
+      transitionDuration: duration ?? state.transitionDuration,
+      clearTransition: transition == null,
+    );
+    if (transition != null) {
+      setAllClipTransitions(transition);
+    }
+  }
+
+  void setClipTransition(int index, String transition) {
+    final neededCount = max(0, state.imagePaths.length - 1);
+    final list = List<String>.from(state.clipTransitions);
+    while (list.length < neededCount) {
+      list.add(state.customTransition ?? 'crossfade');
+    }
+    if (index >= 0 && index < list.length) {
+      list[index] = transition;
+      state = state.copyWith(clipTransitions: list);
+    }
+  }
+
+  void setAllClipTransitions(String transition) {
+    final neededCount = max(0, state.imagePaths.length - 1);
+    final list = List<String>.filled(neededCount, transition);
+    state = state.copyWith(clipTransitions: list, customTransition: transition);
+  }
+
+  void randomizeClipTransitions() {
+    final neededCount = max(0, state.imagePaths.length - 1);
+    if (neededCount == 0) return;
+    final rand = Random();
+    final list = <String>[];
+    String? last;
+    for (int i = 0; i < neededCount; i++) {
+      final choices = availableTransitionIds.where((t) => t != last).toList();
+      final picked = choices[rand.nextInt(choices.length)];
+      list.add(picked);
+      last = picked;
+    }
+    state = state.copyWith(clipTransitions: list);
+  }
+
+  List<String> getEffectiveClipTransitions(String defaultTransition) {
+    final neededCount = max(0, state.imagePaths.length - 1);
+    final list = List<String>.from(state.clipTransitions);
+    while (list.length < neededCount) {
+      list.add(state.customTransition ?? defaultTransition);
+    }
+    if (list.length > neededCount) {
+      return list.sublist(0, neededCount);
+    }
+    return list;
+  }
 
   void reset() {
     state = const ProjectState();

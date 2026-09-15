@@ -133,7 +133,7 @@ def _build_ken_burns_filter(
 
 
 def _build_transition_filter(
-    transition: str,
+    transition: str | list[str],
     n_clips: int,
     duration: float,
     fade_dur: float,
@@ -141,6 +141,7 @@ def _build_transition_filter(
 ) -> list[str]:
     """
     สร้าง xfade / blend transition filter สำหรับทุกช่วงเชื่อมต่อภาพ
+    รองรับทั้ง transition เดียวกันทุกช่วง หรือรายการ transition แยกเฉพาะแต่ละช่วง
 
     Returns:
         list[str]: รายการ filter segments (ใส่ใน filter_complex)
@@ -159,9 +160,13 @@ def _build_transition_filter(
         "default": "fade",
     }
 
-    xfade_name = XFADE_MAP.get(transition, XFADE_MAP["default"])
-
     for i in range(n_clips - 1):
+        if isinstance(transition, list):
+            t_name = transition[i] if i < len(transition) else "crossfade"
+        else:
+            t_name = transition
+        xfade_name = XFADE_MAP.get(t_name, XFADE_MAP["default"])
+
         offset = (duration - fade_dur) * (i + 1)
         if i == 0:
             in_a = "[v0]"
@@ -268,7 +273,12 @@ def build_slideshow(
 
     # อ่านค่าจาก template
     effect: str = template_config.get("effect", "ken_burns_zoom_in")
-    transition: str = template_config.get("transition", "crossfade")
+    transitions_list = template_config.get("transitions")
+    transition: str | list[str] = (
+        transitions_list
+        if (transitions_list and isinstance(transitions_list, list))
+        else template_config.get("transition", "crossfade")
+    )
     duration: float = float(template_config.get("duration_per_image", 5))
     fade_dur: float = float(template_config.get("fade_duration", 1.5))
     intro_text: str = template_config.get("intro_text", "")

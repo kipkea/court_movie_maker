@@ -1,3 +1,5 @@
+import 'audio_track_model.dart';
+
 enum ProjectStatus { draft, uploading, rendering, done, error }
 enum RenderStatus { pending, running, completed, failed }
 
@@ -7,6 +9,7 @@ class ProjectModel {
   final String templateId;
   final List<String> imagePaths;
   final String? audioPath;
+  final List<AudioTrackConfig> audioTracks;
   final String? scriptText;
   final ProjectStatus status;
   final DateTime createdAt;
@@ -17,6 +20,7 @@ class ProjectModel {
     required this.templateId,
     required this.imagePaths,
     this.audioPath,
+    this.audioTracks = const [],
     this.scriptText,
     required this.status,
     required this.createdAt,
@@ -28,6 +32,7 @@ class ProjectModel {
     String? templateId,
     List<String>? imagePaths,
     String? audioPath,
+    List<AudioTrackConfig>? audioTracks,
     String? scriptText,
     ProjectStatus? status,
     DateTime? createdAt,
@@ -38,6 +43,7 @@ class ProjectModel {
       templateId: templateId ?? this.templateId,
       imagePaths: imagePaths ?? this.imagePaths,
       audioPath: audioPath ?? this.audioPath,
+      audioTracks: audioTracks ?? this.audioTracks,
       scriptText: scriptText ?? this.scriptText,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
@@ -51,6 +57,10 @@ class ProjectModel {
       templateId: json['template_id'] as String,
       imagePaths: List<String>.from(json['image_paths'] ?? []),
       audioPath: json['audio_path'] as String?,
+      audioTracks: (json['audio_tracks'] as List<dynamic>?)
+              ?.map((e) => AudioTrackConfig.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       scriptText: json['script_text'] as String?,
       status: ProjectStatus.values.firstWhere(
         (e) => e.name == (json['status'] ?? 'draft'),
@@ -66,6 +76,7 @@ class ProjectModel {
     'template_id': templateId,
     'image_paths': imagePaths,
     'audio_path': audioPath,
+    'audio_tracks': audioTracks.map((t) => t.toJson()).toList(),
     'script_text': scriptText,
     'status': status.name,
     'created_at': createdAt.toIso8601String(),

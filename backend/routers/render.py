@@ -68,6 +68,9 @@ class RenderRequest(BaseModel):
         description="ลำดับรูปภาพ (ชื่อไฟล์) — ถ้าว่างจะใช้ตามลำดับเดิม"
     )
     blender_path: str = Field("blender", description="พาธ Blender executable")
+    transition: str | None = Field(None, description="ชนิดของ transition ระหว่างรูป")
+    transitions: list[str] = Field(default_factory=list, description="รายการ transition แต่ละช่วง")
+    transition_duration: float | None = Field(None, description="ระยะเวลา transition (วินาที)")
 
 
 # ────────────────────────────────────────────────────────────────
@@ -202,18 +205,58 @@ async def _run_render_job(
         template_config = template_manager.get_template(template_id)
         if template_config is None:
             template_config = template_manager.get_default_template()
+        else:
+            template_config = dict(template_config)
+
+        if request.transition:
+            template_config["transition"] = request.transition
+        if request.transitions:
+            template_config["transitions"] = request.transitions
+        if request.transition_duration:
+            template_config["fade_duration"] = request.transition_duration
 
         images = _get_ordered_images(project_id, request.image_order)
         if not images:
             raise RuntimeError("ไม่มีรูปภาพในโปรเจกต์ กรุณาอัพโหลดรูปภาพก่อน")
 
-        # ไฟล์เสียงพื้นหลัง
+        # ไฟล์เสียงพื้นหลัง (รองรับทั้ง Multi-track และ Single audio)
         audio_path: Path | None = None
-        audio_file = meta.get("audio")
-        if audio_file:
-            candidate = UPLOADS_DIR / project_id / "audio" / audio_file
-            if candidate.exists():
-                audio_path = candidate
+        audio_tracks = meta.get("audio_tracks", [])
+
+        if audio_tracks:
+            proc_tracks = []
+            for t in audio_tracks:
+                fname = t.get("filename")
+                if fname:
+                    p = UPLOADS_DIR / project_id / "audio" / fname
+                    if p.is_file():
+                        t_copy = dict(t)
+                        t_copy["path"] = p
+                        proc_tracks.append(t_copy)
+
+            if proc_tracks:
+                _update_job(job_id, progress=10, message="กำลังตัดต่อและผสมไฟล์เสียงดนตรี...")
+                await _broadcast_progress(job_id)
+
+                from core.audio_processor import process_audio_tracks
+                master_audio_path = output_dir / "master_audio.mp3"
+                try:
+                    processed_res = process_audio_tracks(
+                        tracks=proc_tracks,
+                        output_path=master_audio_path,
+                    )
+                    audio_path = Path(processed_res)
+                    logger.info("สร้าง Master Background Audio สำเร็จ: %s", audio_path)
+                except Exception as e:
+                    logger.error("การตัดต่อเสียงเพลงล้มเหลว: %s, ใช้ไฟล์แรกแทน", e)
+                    audio_path = proc_tracks[0]["path"]
+
+        if audio_path is None:
+            audio_file = meta.get("audio")
+            if audio_file:
+                candidate = UPLOADS_DIR / project_id / "audio" / audio_file
+                if candidate.exists():
+                    audio_path = candidate
 
         # ── ขั้นตอน 2: TTS (ถ้าเปิดใช้) ────────────────────
         tts_audio_path: Path | None = None
