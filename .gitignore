@@ -1,0 +1,9 @@
+backend/venv/
+backend/outputs/
+backend/temp/
+backend/uploads/
+tmp/
+
+*.pyc
+backend/__pycache__/    
+
