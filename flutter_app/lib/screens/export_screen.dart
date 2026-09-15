@@ -131,11 +131,12 @@ class _FileCard extends StatelessWidget {
   String get _filename => filePath.replaceAll('\\', '/').split('/').last;
   String get _extension => _filename.split('.').last.toUpperCase();
   bool get _isVideo => ['MP4', 'AVI', 'MOV', 'MKV'].contains(_extension);
-  bool get _isMlt => _extension == 'MLT';
+  bool get _isMlt => ['MLT', 'KDENLIVE'].contains(_extension);
   bool get _isBlend => _extension == 'BLEND';
 
   Color get _typeColor {
     if (_isVideo) return Colors.blue;
+    if (_extension == 'KDENLIVE') return Colors.teal;
     if (_isMlt) return Colors.purple;
     if (_isBlend) return Colors.orange;
     return Colors.grey;
@@ -143,9 +144,23 @@ class _FileCard extends StatelessWidget {
 
   IconData get _typeIcon {
     if (_isVideo) return Icons.videocam;
-    if (_isMlt) return Icons.edit_note;
+    if (_extension == 'KDENLIVE' || _isMlt) return Icons.video_library;
     if (_isBlend) return Icons.view_in_ar;
     return Icons.insert_drive_file;
+  }
+
+  String get _chipLabel {
+    if (_isBlend) return '3D BLEND';
+    if (_extension == 'KDENLIVE') return 'KDENLIVE';
+    if (_extension == 'MLT') return 'MLT XML';
+    return _extension;
+  }
+
+  String get _tooltip {
+    if (_isBlend) return 'เปิดใน Blender';
+    if (_extension == 'KDENLIVE' || _isMlt) return 'เปิดใน Kdenlive';
+    if (_isVideo) return 'เปิดเล่นวิดีโอ';
+    return 'เปิดไฟล์';
   }
 
   String _getFileSize() {
@@ -186,7 +201,7 @@ class _FileCard extends StatelessWidget {
                   Row(
                     children: [
                       Chip(
-                        label: Text(_isBlend ? '3D BLEND' : _extension, style: const TextStyle(fontSize: 10)),
+                        label: Text(_chipLabel, style: const TextStyle(fontSize: 10)),
                         backgroundColor: _typeColor.withOpacity(0.1),
                         side: BorderSide(color: _typeColor.withOpacity(0.3)),
                         padding: EdgeInsets.zero,
@@ -201,9 +216,30 @@ class _FileCard extends StatelessWidget {
             ),
             IconButton(
               icon: const Icon(Icons.open_in_new),
-              tooltip: _isBlend ? 'เปิดใน Blender' : 'เปิดไฟล์',
+              tooltip: _tooltip,
               onPressed: () async {
-                await OpenFile.open(filePath);
+                final result = await OpenFile.open(filePath);
+                if (result.type != ResultType.done) {
+                  if (_extension == 'KDENLIVE' || _isMlt) {
+                    const kdenliveExe = r'C:\Program Files\Kdenlive\bin\kdenlive.exe';
+                    if (File(kdenliveExe).existsSync()) {
+                      await Process.run(kdenliveExe, [filePath]);
+                      return;
+                    }
+                  } else if (_isBlend) {
+                    final blenderCandidates = [
+                      r'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe',
+                      r'C:\Program Files\Blender Foundation\Blender 5.0\blender.exe',
+                      r'C:\Program Files\Blender Foundation\Blender 4.3\blender.exe',
+                    ];
+                    for (final b in blenderCandidates) {
+                      if (File(b).existsSync()) {
+                        await Process.run(b, [filePath]);
+                        return;
+                      }
+                    }
+                  }
+                }
               },
             ),
           ],

@@ -302,15 +302,19 @@ async def _run_render_job(
 
             from core.mlt_exporter import export_mlt
             output_mlt = output_dir / "project.mlt"
-            export_mlt(
+            mlt_res = export_mlt(
                 images=[str(img) for img in images],
                 audio=str(audio_path) if audio_path else None,
                 template_config=template_config,
                 output_path=output_mlt,
                 job_id=job_id,
+                script_audio=str(tts_audio_path) if tts_audio_path else None,
             )
-            _update_job(job_id, output_files={"mlt": str(output_mlt)})
-            logger.info("สร้างไฟล์ MLT สำเร็จ: %s", output_mlt)
+            _update_job(job_id, output_files={
+                "mlt": mlt_res.get("mlt", str(output_mlt)),
+                "kdenlive": mlt_res.get("kdenlive", str(output_dir / "project.kdenlive")),
+            })
+            logger.info("สร้างไฟล์ Kdenlive/MLT สำเร็จ: %s", mlt_res)
 
         # ── เสร็จสิ้น ─────────────────────────────────────────
         _update_job(
@@ -459,7 +463,7 @@ async def download_output(job_id: str, file_type: str) -> FileResponse:
             detail=f"งานยังไม่เสร็จสิ้น (สถานะ: {job.state})"
         )
 
-    VALID_TYPES = {"mp4", "mlt", "blend"}
+    VALID_TYPES = {"mp4", "mlt", "kdenlive", "blend"}
     if file_type not in VALID_TYPES:
         raise HTTPException(
             status_code=400,

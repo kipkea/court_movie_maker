@@ -1,4 +1,4 @@
-﻿"""
+"""
 ffmpeg_engine.py - FFmpeg pipeline builder สำหรับ Court Movie Maker
 สร้างวิดีโอ slideshow ด้วย Ken Burns effect, transitions, text overlay และ audio mixing
 """
@@ -44,6 +44,28 @@ def _find_thai_font() -> str:
             return candidate
     logger.warning("ไม่พบฟอนต์ภาษาไทย ใช้ค่าเริ่มต้น")
     return "tahoma.ttf"
+
+
+def find_ffmpeg_binary(custom_path: str = "ffmpeg") -> str:
+    """ค้นหา FFmpeg binary ในระบบ Windows หรือ PATH อัตโนมัติ"""
+    if custom_path and custom_path != "ffmpeg" and Path(custom_path).is_file():
+        return str(Path(custom_path).resolve())
+
+    which_p = shutil.which(custom_path)
+    if which_p:
+        return which_p
+
+    candidates = [
+        r"D:\ffmpeg\bin\ffmpeg.exe",
+        r"C:\Program Files\Kdenlive\bin\ffmpeg.exe",
+        r"C:\ffmpeg\bin\ffmpeg.exe",
+        r"C:\Program Files\ffmpeg\bin\ffmpeg.exe",
+    ]
+    for cand in candidates:
+        if Path(cand).is_file():
+            return cand
+
+    return custom_path
 
 
 def _escape_drawtext(text: str) -> str:
@@ -229,10 +251,12 @@ def build_slideshow(
         FileNotFoundError: เมื่อไม่พบ ffmpeg หรือไฟล์รูปภาพ
         RuntimeError: เมื่อ ffmpeg ทำงานล้มเหลว
     """
-    if not shutil.which(ffmpeg_path):
+    resolved_ffmpeg = find_ffmpeg_binary(ffmpeg_path)
+    if not (Path(resolved_ffmpeg).is_file() or shutil.which(resolved_ffmpeg)):
         raise FileNotFoundError(
             f"ไม่พบ ffmpeg ที่ '{ffmpeg_path}' กรุณาติดตั้ง FFmpeg และเพิ่มใน PATH"
         )
+    ffmpeg_path = resolved_ffmpeg
 
     images = [Path(img) for img in images]
     for img in images:
@@ -324,15 +348,16 @@ def build_slideshow(
     if has_bg and has_tts:
         bg_idx = audio_input_idx
         tts_idx = audio_input_idx + 1
+        effective_bg_vol = max(0.15, bg_volume * 0.35)  # ลดเสียงเพลงพื้นหลังเพื่อให้ได้ยินเสียงพูดบรรยายชัดเจน
         filter_parts.append(
             f"[{bg_idx}:a]aloop=loop=-1:size=2e+09,atrim=duration={total_video_dur:.2f},"
-            f"volume={bg_volume:.2f},afade=t=out:st={total_video_dur - fade_dur:.2f}:d={fade_dur:.2f}[abg]"
+            f"volume={effective_bg_vol:.2f},afade=t=out:st={total_video_dur - fade_dur:.2f}:d={fade_dur:.2f}[abg]"
         )
         filter_parts.append(
-            f"[{tts_idx}:a]volume=1.0[atts]"
+            f"[{tts_idx}:a]adelay=800|800,volume=1.4[atts]"
         )
         filter_parts.append(
-            f"[abg][atts]amix=inputs=2:duration=longest:dropout_transition=2[aout]"
+            f"[abg][atts]amix=inputs=2:duration=longest:dropout_transition=2:normalize=0[aout]"
         )
         audio_out_label = "[aout]"
     elif has_bg:
@@ -345,7 +370,7 @@ def build_slideshow(
     elif has_tts:
         tts_idx = audio_input_idx
         filter_parts.append(
-            f"[{tts_idx}:a]volume=1.0[aout]"
+            f"[{tts_idx}:a]adelay=800|800,volume=1.3[aout]"
         )
         audio_out_label = "[aout]"
 

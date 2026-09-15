@@ -325,7 +325,8 @@ if seq is not None:
                 channel=1,
                 frame_start=1,
             )
-            bg_strip.volume = {audio_volume}
+            # ถ้ามีเสียงบรรยาย ให้ลดเสียงดนตรีลงเพื่อให้ได้ยินเสียงพูดชัดเจน
+            bg_strip.volume = {audio_volume * 0.35 if script_audio else audio_volume:.2f}
         except Exception as e:
             print(f"Error adding bg audio: {{e}}")
 
@@ -338,7 +339,7 @@ if seq is not None:
                 channel=2,
                 frame_start=int({fps} * 0.8),  # เริ่มพูดหลังจากเริ่มวิดีโอ 0.8 วิ
             )
-            tts_strip.volume = 1.0
+            tts_strip.volume = 1.3
             print("[Blender] เพิ่มเสียงบรรยายภาษาไทย (TTS) บน Channel 2 เรียบร้อย")
         except Exception as e:
             print(f"Error adding TTS audio: {{e}}")

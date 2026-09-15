@@ -1,4 +1,4 @@
-﻿"""
+"""
 tts_engine.py - Text-to-Speech ด้วย edge-tts สำหรับ Court Movie Maker
 รองรับเสียงภาษาไทยและภาษาอังกฤษ พร้อม fallback เมื่อเกิดข้อผิดพลาด
 """
@@ -89,6 +89,8 @@ async def text_to_speech(
         await communicate.save(str(output_path))
 
         if not output_path.exists() or output_path.stat().st_size == 0:
+            if output_path.exists():
+                output_path.unlink(missing_ok=True)
             raise RuntimeError("ไฟล์เสียงที่สร้างมีขนาดเป็นศูนย์")
 
         logger.info("สร้างเสียงพูดสำเร็จ: %s (%.1f KB)", output_path.name, output_path.stat().st_size / 1024)
@@ -96,6 +98,8 @@ async def text_to_speech(
 
     except ImportError:
         logger.error("ไม่พบ edge-tts ติดตั้งด้วย: pip install edge-tts")
+        if output_path.exists() and output_path.stat().st_size == 0:
+            output_path.unlink(missing_ok=True)
         # Fallback: สร้างไฟล์เสียงเงียบ WAV
         fallback_path = output_path.with_suffix(".wav")
         _create_silent_wav(fallback_path, duration_seconds=max(3.0, len(text) * 0.1))
@@ -103,6 +107,8 @@ async def text_to_speech(
 
     except Exception as exc:
         logger.error("สร้างเสียงพูดล้มเหลว: %s — ใช้ไฟล์เงียบแทน", exc)
+        if output_path.exists() and output_path.stat().st_size == 0:
+            output_path.unlink(missing_ok=True)
         # Fallback: สร้างไฟล์เสียงเงียบ WAV
         fallback_path = output_path.with_suffix(".wav")
         _create_silent_wav(fallback_path, duration_seconds=max(3.0, len(text) * 0.1))
